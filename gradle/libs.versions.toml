@@ -1,0 +1,15 @@
+[versions]
+agp = "9.1.0"
+libxposed-api = "102.0.0"
+play-billing = "5.2.1"
+spotless = "8.10.2"
+junit = "4.13.2"
+
+[libraries]
+libxposed-api = { module = "io.github.libxposed:api", version.ref = "libxposed-api" }
+play-billing = { module = "com.android.billingclient:billing", version.ref = "play-billing" }
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
