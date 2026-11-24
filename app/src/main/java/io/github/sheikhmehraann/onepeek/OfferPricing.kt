@@ -175,6 +175,7 @@ internal object OfferPricing {
         while (close < rawJson.length) {
             when (rawJson[close]) {
                 '{' -> depth += 1
+
                 '}' -> {
                     depth -= 1
                     if (depth == 0) return rawJson.substring(open, close + 1)

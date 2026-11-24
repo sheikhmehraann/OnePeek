@@ -445,8 +445,11 @@ internal class BillingSession(activity: Activity) {
 
     private fun categoryLabel(activity: Activity, offer: OfferEntry): String = when (offer.ultraTier) {
         UltraTier.ULTRA_20X_30TB -> text(activity, R.string.category_ultra_20x)
+
         UltraTier.ULTRA_5X_20TB -> text(activity, R.string.category_ultra_5x)
+
         UltraTier.ULTRA_GENERIC -> text(activity, R.string.category_ultra)
+
         UltraTier.NONE -> when (offer.category) {
             SkuCategory.ULTRA -> text(activity, R.string.category_ultra)
             SkuCategory.AI_PRO_PLUS -> text(activity, R.string.category_ai_pro)
