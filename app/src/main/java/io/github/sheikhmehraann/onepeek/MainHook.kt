@@ -60,8 +60,7 @@ class MainHook : XposedModule() {
         }
     }
 
-    private fun shouldAttach(activity: Activity): Boolean =
-        !activity.javaClass.name.startsWith("com.android.billingclient.")
+    private fun shouldAttach(activity: Activity): Boolean = !activity.javaClass.name.startsWith("com.android.billingclient.")
 
     private fun installButton(activity: Activity) {
         if (activity.isFinishing || activity.isDestroyed) return

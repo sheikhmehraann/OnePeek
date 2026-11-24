@@ -6,6 +6,7 @@ plugins {
 
 val gitCommitId = rootProject.extra["gitCommitId"] as String
 val gitCommitCount = rootProject.extra["gitCommitCount"] as Int
+val appVersionName = rootProject.extra["appVersionName"] as String
 
 android {
     namespace = "io.github.sheikhmehraann.onepeek"
@@ -16,7 +17,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = gitCommitCount
-        versionName = "1.$gitCommitCount"
+        versionName = appVersionName
 
         buildConfigField("String", "COMMIT_HASH", "\"$gitCommitId\"")
     }

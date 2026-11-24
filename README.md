@@ -2,19 +2,39 @@
 
 A minimal libxposed API 102 module scoped strictly to Google One (`com.google.android.apps.subscriptions.red`).
 
-It adds a small floating button inside Google One that queries Google Play Billing Library `5.2.1` for the subscription offers returned to the active Play account, displays every pricing phase verbatim, and lets you manually open Google Play's official checkout sheet after a confirmation prompt.
+OnePeek adds a small floating button inside Google One that queries Google Play Billing Library `5.2.1` for the subscription offers returned to the active Play account, lists every pricing phase verbatim, and lets you manually open Google Play's official checkout sheet after confirmation.
 
-## Scope and Design
+## Requirements
 
-- Targets `com.google.android.apps.subscriptions.red` only (`staticScope=true`).
-- Hooks only `android.app.Activity.onResume` and `android.app.Activity.onDestroy` in protective mode, skipping Play Billing's own `ProxyBillingActivity` so the overlay button does not cover checkout screens.
-- Touches zero private or obfuscated Google One classes, so it needs no bytecode scanners or reflection wrappers.
-- Bundles only `com.android.billingclient:billing:5.2.1` (matching the API v17 `PRODUCT_DETAILS` and `ProxyBillingActivity` protocol) with no extra permissions or native libraries.
-- Never automates account switching, card entry, price overrides, or checkout confirmation. All eligibility checks and purchase terms are enforced by Google Play.
+- Android 8.0+ (`minSdk 26`)
+- An LSPosed / libxposed API 102 framework
+- Google One (`com.google.android.apps.subscriptions.red`) and Google Play Store (`com.android.vending`)
+
+## Repository Layout
+
+```text
+.
+├── .github/workflows/
+│   ├── ci.yml                  # Unit tests, Spotless check, APK assembly, signature verification
+│   └── release.yml             # Tag-driven pre-release and stable release publisher with SHA256SUMS.txt
+├── app/src/
+│   ├── main/
+│   │   ├── java/io/github/sheikhmehraann/onepeek/
+│   │   │   ├── MainHook.kt         # libxposed API 102 entrypoint and floating button lifecycle
+│   │   │   ├── BillingSession.kt   # Play Billing 5.2.1 connection, query, dialogs, checkout launch
+│   │   │   ├── OfferPricing.kt     # ISO-8601 duration parser and leading free-phase scorer
+│   │   │   └── ModuleResources.kt  # Cross-process module string resolver via ApplicationInfo
+│   │   ├── res/                    # Vector launcher icon and English strings
+│   │   └── resources/META-INF/xposed/
+│   └── test/                   # JUnit 4 tests for OfferPricing
+├── docs/architecture.md        # Hook surface, Binder IPC notes, and Billing 5.2.1 rationale
+├── CHANGELOG.md
+└── LICENSE
+```
 
 ## Tracked SKUs
 
-Queries the following subscription SKUs through `BillingClient.queryProductDetailsAsync`:
+`BillingSession` queries these subscription SKUs through `BillingClient.queryProductDetailsAsync`:
 
 - `g1.play.20tb`
 - `g1.play.ai.pro`
@@ -23,32 +43,39 @@ Queries the following subscription SKUs through `BillingClient.queryProductDetai
 - `g1.ai.pro`
 - `g1.youtube_premium_individual_add_on`
 
-Offers are sorted with free introductory phases first, ordered by total leading free duration, then by SKU name.
+Offers with a free introductory phase sort first by total leading free duration, then by SKU. Tapping any row displays the SKU, title, offer ID, base plan ID, tags, and all introductory and recurring phases, with an option to copy the breakdown.
 
-## Usage
+## Installation
 
-1. Install the APK on a device running an LSPosed / libxposed API 102 framework.
-2. Enable OnePeek for Google One (`com.google.android.apps.subscriptions.red`) in your Xposed manager.
+1. Download `OnePeek-<version>-release.apk` from [Releases](https://github.com/sheikhmehraann/OnePeek/releases) and verify its digest against `SHA256SUMS.txt`.
+2. Install the APK and enable OnePeek in your Xposed manager with scope limited to Google One (`com.google.android.apps.subscriptions.red`).
 3. Force-stop and reopen Google One.
-4. Tap the **Offers** pill in the bottom-right corner to inspect returned offers and pricing phases.
+4. Tap the **Offers** pill in the bottom-right corner.
 
-Seeing an offer in the query list does not guarantee account eligibility. Always verify the active Google Play account, trial length, and renewal price on the official Play checkout sheet.
+Seeing an offer in the list does not guarantee account eligibility. Always verify the active Google Play account, trial length, renewal price, and first billing date on Google Play's checkout sheet.
 
-## Build
+## Building from Source
 
-Requires JDK 21 and the Android SDK (compileSdk 36):
+Requires JDK 21 and the Android SDK (`compileSdk 36`):
 
 ```bash
 ./gradlew :app:testDebugUnitTest :app:assembleRelease
 ```
 
-Push to `main` or trigger the **Build APK** workflow in GitHub Actions to run unit tests, assemble signed release and debug APKs, verify signatures and `META-INF/xposed/*` entries, upload artifacts, and publish a release.
+Optional environment variables for release signing:
 
-Optional repository secrets for stable release signing across builds:
-
-- `SIGNING_KEYSTORE_BASE64`: base64-encoded PKCS12/JKS keystore
+- `ONEPEEK_KEYSTORE_PATH`
 - `ONEPEEK_STORE_PASSWORD`
 - `ONEPEEK_KEY_ALIAS`
 - `ONEPEEK_KEY_PASSWORD`
 
-If omitted, the workflow generates a fresh RSA-2048 keystore for signing.
+## Release Process
+
+- Pushing to `main` or opening a pull request triggers **CI** (tests, Spotless check, debug/release APK build, `apksigner` validation).
+- Pushing a pre-release tag such as `v0.1.0-beta.1` triggers **Release** and publishes a GitHub Pre-Release with signed release and debug APKs plus `SHA256SUMS.txt`.
+- Pushing a clean semver tag such as `v1.0.0` publishes a stable GitHub Release.
+- Set repository secrets `SIGNING_KEYSTORE_BASE64`, `ONEPEEK_STORE_PASSWORD`, `ONEPEEK_KEY_ALIAS`, and `ONEPEEK_KEY_PASSWORD` to keep a fixed release signing key across builds; otherwise CI generates an ephemeral RSA-2048 keystore.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

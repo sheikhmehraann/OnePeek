@@ -14,8 +14,16 @@ fun runGitCommand(vararg args: String): String? =
         output
     }.getOrNull()
 
-extra["gitCommitId"] = runGitCommand("git", "rev-parse", "--short", "HEAD") ?: "dev"
-extra["gitCommitCount"] = runGitCommand("git", "rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1
+val commitHash = runGitCommand("git", "rev-parse", "--short", "HEAD") ?: "dev"
+val commitCount = runGitCommand("git", "rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1
+val exactTag = System.getenv("ONEPEEK_VERSION_NAME")
+    ?.takeIf { it.isNotBlank() }
+    ?.removePrefix("v")
+    ?: runGitCommand("git", "describe", "--tags", "--exact-match")?.removePrefix("v")
+
+extra["gitCommitId"] = commitHash
+extra["gitCommitCount"] = commitCount
+extra["appVersionName"] = exactTag ?: "0.1.0-dev.$commitCount"
 
 spotless {
     lineEndings = com.diffplug.spotless.LineEnding.UNIX

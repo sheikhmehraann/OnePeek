@@ -15,10 +15,9 @@ internal data class OfferPhase(
 }
 
 internal object OfferPricing {
-    private val PERIOD_REGEX = Regex("^P(\\d+)([DWMY])$")
+    private val periodRegex = Regex("^P(\\d+)([DWMY])$")
 
-    fun hasFreeIntro(phases: List<OfferPhase>): Boolean =
-        phases.firstOrNull()?.amountMicros == 0L
+    fun hasFreeIntro(phases: List<OfferPhase>): Boolean = phases.firstOrNull()?.amountMicros == 0L
 
     fun freeIntroDays(phases: List<OfferPhase>): Int {
         var totalDays = 0
@@ -26,18 +25,14 @@ internal object OfferPricing {
             if (phase.amountMicros != 0L) break
             val unitDays = parsePeriodDays(phase.billingPeriod)
             if (unitDays <= 0) continue
-            val cycles = when {
-                phase.billingCycles > 0 -> phase.billingCycles
-                phase.recurrenceMode == OfferPhase.RECURRENCE_NON_RECURRING -> 1
-                else -> 1
-            }
+            val cycles = if (phase.billingCycles > 0) phase.billingCycles else 1
             totalDays += unitDays * cycles
         }
         return totalDays
     }
 
     fun parsePeriodDays(period: String): Int {
-        val match = PERIOD_REGEX.matchEntire(period.trim()) ?: return 0
+        val match = periodRegex.matchEntire(period.trim()) ?: return 0
         val count = match.groupValues[1].toIntOrNull() ?: return 0
         if (count <= 0) return 0
         val factor = when (match.groupValues[2]) {

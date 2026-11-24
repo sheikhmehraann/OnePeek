@@ -246,10 +246,8 @@ internal class BillingSession(activity: Activity) {
                 phase.formattedPrice
             }
             val cadence = when {
-                phase.recurrenceMode == OfferPhase.RECURRENCE_INFINITE || phase.billingCycles == 0 ->
-                    text(activity, R.string.phase_ongoing)
-                phase.recurrenceMode == OfferPhase.RECURRENCE_NON_RECURRING && phase.billingCycles <= 1 ->
-                    text(activity, R.string.phase_once)
+                phase.recurrenceMode == OfferPhase.RECURRENCE_INFINITE || phase.billingCycles == 0 -> text(activity, R.string.phase_ongoing)
+                phase.recurrenceMode == OfferPhase.RECURRENCE_NON_RECURRING && phase.billingCycles <= 1 -> text(activity, R.string.phase_once)
                 else -> text(activity, R.string.phase_cycles, phase.billingCycles)
             }
             text(activity, R.string.phase_line, index + 1, price, phase.billingPeriod, cadence)
