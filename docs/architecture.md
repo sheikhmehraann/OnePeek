@@ -11,7 +11,7 @@ Four protective framework hooks are installed:
 1. `onepeek.activity.resume` (`Activity.onResume`, after): attaches the floating `Offers` pill to `decorView`, skipping `com.android.billingclient.*` (`ProxyBillingActivity`, `ProxyBillingActivityV2`) and six non-UI wrapper/gateway activities verified in Google One `1.336`'s manifest (`PlayCoreDialogWrapperActivity`, `TransparentGoogleOneSdkActivity`, `GatewayActivity`, `AnimatedGatewayActivity`, `GoogleApiActivity`, `SystemTrayActivity`).
 2. `onepeek.activity.destroy` (`Activity.onDestroy`, before): closes the per-Activity `BillingSession` and ends its `BillingClient` connection.
 3. `onepeek.bundle.skus` (`Bundle.putStringArrayList`, before): watches exclusively for keys `ITEM_ID_LIST` and `SKU_SERIALIZED_DOCID_LIST`. Static analysis of Google One `1.191` through `1.336` confirmed that Google One hardcodes at most `g1.100gb` locally and receives all other subscription SKUs dynamically from Google servers (`SubscriptionsManagementService.GetStorageUpsellFlowUrl`, `SubscriptionsApiMobileService.ListEligiblePlans`, `GetDynamicStorefrontInfo`, and `1.336`'s `PurchaseWebViewInterfaceImpl` JS bridge) before passing them to Play Billing `9.2.0`.
-4. `onepeek.bundle.details` (`Bundle.getStringArrayList`, after): passively reads `DETAILS_LIST` and `UNFETCHED_PRODUCT_LIST` returned from Play Store to Google One's Billing `9.2.0` client (`Lhbu;.C`), extracting `"productId"` values without mutating responses.
+4. `onepeek.bundle.details` (`Bundle.getStringArrayList`, after): passively reads `DETAILS_LIST` and `UNFETCHED_PRODUCT_LIST` returned from Play Store to Google One's Billing `9.2.0` client (`Lhbu;.C`), extracting all `"productId"` values (including nested `transitionPlanDetails` target SKUs) without mutating responses.
 
 ## Play Billing 5.2.1 Compatibility Against Google One's Billing 9.2.0
 
@@ -37,7 +37,7 @@ Mirroring Google One `1.336`'s three-bucket promotion taxonomy (`FREE_TRIAL_PROM
 5. Product ID (ascending)
 6. Offer ID or base plan ID (ascending)
 
-The Offer List opens in `All Free Trials` when free trials exist (falling back to `All Trials & Intro Promos`, then `All Ultra Plans & Promos`, then `All Returned Offers`), and provides a `Filter` picker for switching between `Ultra Free Trials`, `All Ultra Plans & Promos`, `All Free Trials`, `All Trials & Intro Promos`, and `All Returned Offers` without re-querying Play Billing. Both `FREE_TRIAL` and `INTRO_PROMO` offers expose `Open Play Checkout`, which requires a second confirmation dialog and checks `billing.isReady` before invoking `BillingClient.launchBillingFlow`.
+The Offer List opens directly in `Ultra Free Trials` when Google Play returns `$0` Ultra trial offers (falling back to `All Free Trials`, then `All Trials & Intro Promos`, then `All Ultra Plans & Promos`, then `All Returned Offers`), and provides a `Filter` picker for switching between all 5 views or copying a full diagnostic scan report without re-querying Play Billing. Both `FREE_TRIAL` and `INTRO_PROMO` offers expose `Open Play Checkout`, which requires a second confirmation dialog and checks `billing.isReady` before invoking `BillingClient.launchBillingFlow`.
 
 ## Explicit Non-Goals
 

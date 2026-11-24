@@ -56,13 +56,17 @@ class SkuCatalogTest {
 
         val inAdded = SkuCatalog.recordObservedDetailsJson(
             listOf(
-                "{\"productId\":\"g1.early_access.ultra\",\"type\":\"subs\"}",
+                "{\"productId\":\"g1.early_access.ultra\",\"type\":\"subs\",\"transitionPlanDetails\":{\"productId\":\"g1.ultra.transition\"}}",
                 "{\"productId\":\"g1.play.20tb\",\"type\":\"subs\"}",
             ),
         )
-        assertEquals(1, inAdded)
-        assertEquals(2, SkuCatalog.observedCount())
-        assertTrue(SkuCatalog.allSkus().take(2).containsAll(listOf("g1.black_friday.2026", "g1.early_access.ultra")))
+        assertEquals(2, inAdded)
+        assertEquals(3, SkuCatalog.observedCount())
+        assertTrue(
+            SkuCatalog.allSkus().take(3).containsAll(
+                listOf("g1.black_friday.2026", "g1.early_access.ultra", "g1.ultra.transition"),
+            ),
+        )
     }
 
     @Test

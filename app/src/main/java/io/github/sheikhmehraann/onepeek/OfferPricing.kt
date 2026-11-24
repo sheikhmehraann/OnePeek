@@ -109,8 +109,18 @@ internal object OfferPricing {
         return when (classify(phases)) {
             OfferKind.FREE_TRIAL -> {
                 val intro = formatFreeIntroLabel(phases, eft)
-                val renewal = phases.firstOrNull { it.amountMicros > 0L }
-                if (renewal != null) "$intro -> ${renewal.formattedPrice}/${renewal.billingPeriod}" else intro
+                val paidPhases = phases.filter { it.amountMicros > 0L }
+                when {
+                    paidPhases.isEmpty() -> intro
+
+                    paidPhases.size == 1 -> "$intro -> ${paidPhases.first().formattedPrice}/${paidPhases.first().billingPeriod}"
+
+                    else -> {
+                        val step = paidPhases.first()
+                        val finalPhase = paidPhases.last()
+                        "$intro -> ${step.formattedPrice}/${step.billingPeriod} -> ${finalPhase.formattedPrice}/${finalPhase.billingPeriod}"
+                    }
+                }
             }
 
             OfferKind.INTRO_PROMO -> {

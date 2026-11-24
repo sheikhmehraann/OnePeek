@@ -2,6 +2,21 @@
 
 All notable changes to OnePeek are documented in this file.
 
+## [0.5.0-beta.1] - 2026-11-24
+
+Ultra-first inspection defaults, multi-phase pricing chain display, transition-plan SKU capture, and one-tap scan report export.
+
+### Added
+
+- `Copy Report` action inside the `Filter` picker exporting a structured summary of scanned SKU totals, live-captured count, all discovered Ultra 5x/20x plans and trials, and all free trials across every tier.
+- Unit tests covering 3-phase `Free -> Intro -> Recurring` compact formatting and multi-`productId` (`transitionPlanDetails`) extraction from Play Billing `DETAILS_LIST` JSON.
+
+### Changed
+
+- Updated default offer view to open directly on `Ultra Free Trials` whenever Google Play returns `$0` Ultra trial offers on the active account, falling back smoothly to `All Free Trials`, `All Trials & Intro Promos`, `All Ultra Plans & Promos`, and `All Returned Offers`.
+- Updated `SkuCatalog.recordObservedDetailsJson` to extract all `"productId"` occurrences in each Play Billing JSON object (capturing nested `transitionPlanDetails` target SKUs as well as top-level products).
+- Updated `OfferPricing.formatCompactPrice` to display both the intermediate discounted phase and final recurring price on 3-phase `Free -> Intro -> Recurring` offers (`Free 1M -> $49.99/P1M -> $99.99/P1M`).
+
 ## [0.4.0-beta.1] - 2026-11-24
 
 Deep Ultra 5x/20x differentiation, dual-direction Play Billing live SKU capture, and raw `ProductDetails` metadata extraction informed by deep DEX diffing of Google One `1.335` -> `1.336`, Billing `5.2.1` `ProductDetails` bytecode inspection, and live `one.google.com` pricing feed (`pricing_2026_11_16.json`) verification.

@@ -41,7 +41,7 @@ Google Play Billing has no "list all SKUs" RPC; Google One fetches plan SKUs dyn
 2. **Dual-direction passive live SKU capture:** Hooks `android.os.Bundle.putStringArrayList` (`ITEM_ID_LIST` and `SKU_SERIALIZED_DOCID_LIST`) and `android.os.Bundle.getStringArrayList` (`DETAILS_LIST` and `UNFETCHED_PRODUCT_LIST`) inside Google One to passively record any new server-pushed SKUs (such as Black Friday, early-access, or regional plans) as you browse Google One's own plans pages, prioritizing them at the front of subsequent scans without touching obfuscated app classes.
 3. **Custom SKU lookup:** Includes an inline `Add SKU` action inside the offer dialog accepting raw SKUs or full `subs:com.google.android.apps.subscriptions.red:<sku>` doc IDs on demand.
 
-Every returned offer is classified into `FREE_TRIAL` (with `EFT` tagging), `INTRO_PROMO` (with normalized daily-rate discount percentage), or `BASE_PLAN`, badged by Ultra sub-tier (`[ULTRA 20x]`, `[ULTRA 5x]`, `[ULTRA]`), and enriched in Offer Breakdown with `installmentPlanDetails` and `serializedDocid` parsed from Play Billing's raw JSON response. The `Filter` picker switches instantly between `Ultra Free Trials`, `All Ultra Plans & Promos`, `All Free Trials`, `All Trials & Intro Promos`, and `All Returned Offers`.
+Every returned offer is classified into `FREE_TRIAL` (with `EFT` tagging and multi-phase `Free -> Intro -> Recurring` display), `INTRO_PROMO` (with normalized daily-rate discount percentage), or `BASE_PLAN`, badged by Ultra sub-tier (`[ULTRA 20x]`, `[ULTRA 5x]`, `[ULTRA]`), and enriched in Offer Breakdown with `installmentPlanDetails` and `serializedDocid` parsed from Play Billing's raw JSON response. The offer list opens directly into `Ultra Free Trials` when Google Play returns `$0` Ultra trials to the account (falling back cleanly to `All Free Trials`, `All Trials & Intro Promos`, `All Ultra Plans & Promos`, or `All Returned Offers`), and the `Filter` picker includes a one-tap `Copy Report` export.
 
 ## Installation
 
@@ -70,7 +70,7 @@ Optional environment variables for release signing:
 ## Release Process
 
 - Pushing to `main` or opening a pull request triggers **CI** (Spotless check, unit tests, debug/release APK build, `apksigner` validation).
-- Pushing a pre-release tag such as `v0.4.0-beta.1` triggers **Release** and publishes a GitHub Pre-Release with signed release and debug APKs plus `SHA256SUMS.txt`.
+- Pushing a pre-release tag such as `v0.5.0-beta.1` triggers **Release** and publishes a GitHub Pre-Release with signed release and debug APKs plus `SHA256SUMS.txt`.
 - Pushing a clean semver tag such as `v1.0.0` publishes a stable GitHub Release.
 - Set repository secrets `SIGNING_KEYSTORE_BASE64`, `ONEPEEK_STORE_PASSWORD`, `ONEPEEK_KEY_ALIAS`, and `ONEPEEK_KEY_PASSWORD` to keep a fixed release signing key across builds; otherwise CI generates an ephemeral RSA-2048 keystore.
 

@@ -87,12 +87,18 @@ class OfferPricingTest {
             OfferPhase(124_990_000L, "$124.99", "P1M", 3),
             OfferPhase(249_990_000L, "$249.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
         )
+        val chainedFreeToIntroToBase = listOf(
+            OfferPhase(0L, "$0.00", "P1M", 1),
+            OfferPhase(49_990_000L, "$49.99", "P1M", 3),
+            OfferPhase(99_990_000L, "$99.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
+        )
         val paidOnly = listOf(
             OfferPhase(9_990_000L, "$9.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
         )
 
         assertEquals("Free 1Y (EFT) -> $99.99/P1M", OfferPricing.formatCompactPrice(ultraEft, eft = true))
         assertEquals("Free 1Y -> $99.99/P1M", OfferPricing.formatCompactPrice(ultraEft, eft = false))
+        assertEquals("Free 1M -> $49.99/P1M -> $99.99/P1M", OfferPricing.formatCompactPrice(chainedFreeToIntroToBase))
         assertEquals("Intro -50% 3M ($124.99) -> $249.99/P1M", OfferPricing.formatCompactPrice(ultraPromo))
         assertEquals("$9.99/P1M", OfferPricing.formatCompactPrice(paidOnly))
     }

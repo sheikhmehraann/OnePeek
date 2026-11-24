@@ -241,10 +241,11 @@ internal object SkuCatalog {
         var added = 0
         for (item in jsonItems) {
             val json = item as? String ?: continue
-            val match = jsonProductIdRegex.find(json) ?: continue
-            val sku = match.groupValues[1]
-            if (sku !in defaultSkuSet && observed.add(sku)) {
-                added += 1
+            for (match in jsonProductIdRegex.findAll(json)) {
+                val sku = match.groupValues[1]
+                if (sku !in defaultSkuSet && observed.add(sku)) {
+                    added += 1
+                }
             }
         }
         return added

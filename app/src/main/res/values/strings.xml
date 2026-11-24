@@ -69,6 +69,7 @@
     <string name="action_close">Close</string>
     <string name="action_back">Back</string>
     <string name="action_copy">Copy</string>
+    <string name="action_copy_report">Copy Report</string>
     <string name="action_checkout">Open Play Checkout</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_continue">Continue</string>

@@ -231,6 +231,7 @@ internal class BillingSession(activity: Activity) {
     )
 
     private fun defaultFilterMode(offers: List<OfferEntry>): FilterMode = when {
+        offers.any { it.isUltra && it.isFreeIntro } -> FilterMode.ULTRA_FREE_TRIALS
         offers.any { it.isFreeIntro } -> FilterMode.FREE_TRIALS
         offers.any { it.isPromoOrTrial } -> FilterMode.TRIALS_AND_PROMOS
         offers.any { it.isUltra } -> FilterMode.ULTRA_ALL
@@ -323,10 +324,39 @@ internal class BillingSession(activity: Activity) {
                     }
                 }
             }
+            .setNeutralButton(text(activity, R.string.action_copy_report)) { _, _ ->
+                if (isCurrent(id)) {
+                    copyToClipboard(activity, formatScanReport(activity, allOffers))
+                }
+            }
             .setNegativeButton(text(activity, R.string.action_cancel)) { _, _ ->
                 if (isCurrent(id)) showOfferList(activity, id, allOffers, current)
             }
             .show()
+    }
+
+    private fun formatScanReport(activity: Activity, allOffers: List<OfferEntry>): String = buildString {
+        val ultraFree = allOffers.filter { it.isUltra && it.isFreeIntro }
+        val ultraPromos = allOffers.filter { it.isUltra && it.kind == OfferKind.INTRO_PROMO }
+        val ultraAll = allOffers.filter { it.isUltra }
+        val allTrials = allOffers.filter { it.isFreeIntro }
+        append("OnePeek Scan Report\n")
+        append("Scanned SKUs: ${SkuCatalog.allSkus().size} (Ultra: ${SkuCatalog.ultraSkus.size}, Live captured: ${SkuCatalog.observedCount()})\n")
+        append("Returned offers: ${allOffers.size} | Ultra free trials: ${ultraFree.size} | Ultra intro promos: ${ultraPromos.size} | Total Ultra: ${ultraAll.size} | All free trials: ${allTrials.size}\n")
+        if (ultraAll.isNotEmpty()) {
+            append("\n--- Ultra Plans & Trials ---\n")
+            for (offer in ultraAll) {
+                append(offer.rowLabel(activity))
+                append('\n')
+            }
+        }
+        if (allTrials.isNotEmpty()) {
+            append("\n--- All Free Trials ---\n")
+            for (offer in allTrials) {
+                append(offer.rowLabel(activity))
+                append('\n')
+            }
+        }
     }
 
     private fun showCustomSkuDialog(activity: Activity, id: Int) {
