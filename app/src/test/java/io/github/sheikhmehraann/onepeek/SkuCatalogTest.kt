@@ -14,13 +14,26 @@ class SkuCatalogTest {
     @Test
     fun defaultCatalogHasUniqueEntriesAndChunksUnderBillingLimit() {
         assertEquals(SkuCatalog.defaultSkus.size, SkuCatalog.defaultSkus.toSet().size)
-        assertTrue(SkuCatalog.defaultSkus.contains("g1.100gb"))
-        assertTrue(SkuCatalog.defaultSkus.contains("g1.play.20tb"))
-        assertTrue(SkuCatalog.defaultSkus.contains("g1.2tb.ai.subs_variant"))
+        assertTrue(SkuCatalog.ultraSkus.contains("g1.play.20tb"))
+        assertTrue(SkuCatalog.ultraSkus.contains("g1.play.ai.pro"))
+        assertTrue(SkuCatalog.ultraSkus.contains("g1.30tb"))
+        assertTrue(SkuCatalog.aiProPlusSkus.contains("g1.2tb.ai.subs_variant"))
+        assertTrue(SkuCatalog.storageSkus.contains("g1.100gb"))
         val chunks = SkuCatalog.chunkedSkus()
         assertTrue(chunks.isNotEmpty())
         assertTrue(chunks.all { it.size in 1..SkuCatalog.BATCH_SIZE })
         assertTrue(SkuCatalog.BATCH_SIZE <= 20)
+    }
+
+    @Test
+    fun classifiesUltraAiStorageAddonAndLiveSkus() {
+        assertEquals(SkuCategory.ULTRA, SkuCatalog.categoryOf("g1.play.20tb"))
+        assertEquals(SkuCategory.ULTRA, SkuCatalog.categoryOf("g1.play.ai.pro"))
+        assertEquals(SkuCategory.ULTRA, SkuCatalog.categoryOf("g1.future.plan", "Google AI Ultra (30 TB)"))
+        assertEquals(SkuCategory.AI_PRO_PLUS, SkuCatalog.categoryOf("g1.2tb.ai.subs_variant"))
+        assertEquals(SkuCategory.STORAGE, SkuCatalog.categoryOf("g1.100gb"))
+        assertEquals(SkuCategory.ADDON, SkuCatalog.categoryOf("g1.youtube_premium_individual_add_on"))
+        assertEquals(SkuCategory.DYNAMIC, SkuCatalog.categoryOf("g1.unknown.regional"))
     }
 
     @Test

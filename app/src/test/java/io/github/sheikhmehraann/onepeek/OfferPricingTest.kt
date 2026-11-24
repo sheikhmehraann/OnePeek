@@ -26,23 +26,33 @@ class OfferPricingTest {
     }
 
     @Test
-    fun detectsFreeIntroOnlyOnFirstPhase() {
-        val freeIntro = listOf(
+    fun classifiesFreeTrialsIntroPromosAndBasePlans() {
+        val ultraFree = listOf(
             OfferPhase(0L, "$0.00", "P1Y", 1),
             OfferPhase(99_990_000L, "$99.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
+        )
+        val ultraHalfOff = listOf(
+            OfferPhase(124_990_000L, "$124.99", "P1M", 3),
+            OfferPhase(249_990_000L, "$249.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
         )
         val paidOnly = listOf(
             OfferPhase(19_990_000L, "$19.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
         )
-        val delayedFree = listOf(
-            OfferPhase(1_990_000L, "$1.99", "P1M", 1),
-            OfferPhase(0L, "$0.00", "P1M", 1),
-        )
 
-        assertTrue(OfferPricing.hasFreeIntro(freeIntro))
-        assertFalse(OfferPricing.hasFreeIntro(paidOnly))
-        assertFalse(OfferPricing.hasFreeIntro(delayedFree))
-        assertFalse(OfferPricing.hasFreeIntro(emptyList()))
+        assertEquals(OfferKind.FREE_TRIAL, OfferPricing.classify(ultraFree))
+        assertEquals(OfferKind.INTRO_PROMO, OfferPricing.classify(ultraHalfOff))
+        assertEquals(OfferKind.BASE_PLAN, OfferPricing.classify(paidOnly))
+        assertEquals(50, OfferPricing.introDiscountPercent(ultraHalfOff))
+        assertEquals(0, OfferPricing.introDiscountPercent(paidOnly))
+    }
+
+    @Test
+    fun detectsEftAcrossOfferIdBasePlanAndTags() {
+        assertTrue(OfferPricing.isEft("eft-12month", "monthly"))
+        assertTrue(OfferPricing.isEft("12months-eft", "monthly"))
+        assertTrue(OfferPricing.isEft(null, "annual-eft-plan"))
+        assertTrue(OfferPricing.isEft("promo-2026", "monthly", listOf("g1-eft-eligible")))
+        assertFalse(OfferPricing.isEft("intro-50p", "monthly", listOf("standard")))
     }
 
     @Test
@@ -68,21 +78,22 @@ class OfferPricingTest {
     }
 
     @Test
-    fun formatsCompactRowSummaryForTrialsAndPaidOffers() {
-        val trialWithRenewal = listOf(
+    fun formatsCompactRowSummaryForTrialsPromosAndPaidOffers() {
+        val ultraEft = listOf(
             OfferPhase(0L, "$0.00", "P1Y", 1),
             OfferPhase(99_990_000L, "$99.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
         )
-        val multiCycleTrial = listOf(
-            OfferPhase(0L, "$0.00", "P1M", 3),
-            OfferPhase(19_990_000L, "$19.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
+        val ultraPromo = listOf(
+            OfferPhase(124_990_000L, "$124.99", "P1M", 3),
+            OfferPhase(249_990_000L, "$249.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
         )
         val paidOnly = listOf(
             OfferPhase(9_990_000L, "$9.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
         )
 
-        assertEquals("Free 1Y -> $99.99/P1M", OfferPricing.formatCompactPrice(trialWithRenewal))
-        assertEquals("Free 3M -> $19.99/P1M", OfferPricing.formatCompactPrice(multiCycleTrial))
+        assertEquals("Free 1Y (EFT) -> $99.99/P1M", OfferPricing.formatCompactPrice(ultraEft, eft = true))
+        assertEquals("Free 1Y -> $99.99/P1M", OfferPricing.formatCompactPrice(ultraEft, eft = false))
+        assertEquals("Intro -50% 3M ($124.99) -> $249.99/P1M", OfferPricing.formatCompactPrice(ultraPromo))
         assertEquals("$9.99/P1M", OfferPricing.formatCompactPrice(paidOnly))
     }
 }

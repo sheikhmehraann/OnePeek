@@ -2,6 +2,14 @@ package io.github.sheikhmehraann.onepeek
 
 import java.util.concurrent.ConcurrentHashMap
 
+internal enum class SkuCategory {
+    ULTRA,
+    AI_PRO_PLUS,
+    STORAGE,
+    ADDON,
+    DYNAMIC,
+}
+
 internal object SkuCatalog {
     const val BATCH_SIZE = 18
 
@@ -9,59 +17,114 @@ internal object SkuCatalog {
     private val observed = ConcurrentHashMap.newKeySet<String>()
     private val custom = ConcurrentHashMap.newKeySet<String>()
 
-    val defaultSkus: List<String> = listOf(
-        // Storage tiers (g1.100gb verified in Google One 1.336 base DEX)
+    val ultraSkus: List<String> = listOf(
+        "g1.play.20tb",
+        "g1.play.ai.pro",
+        "g1.30tb",
+        "g1.20tb",
+        "g1.ai.ultra",
+        "g1.play.ai.ultra",
+        "g1.ultra",
+        "g1.ultra.20tb",
+        "g1.ultra.30tb",
+        "g1.20tb.ai",
+        "g1.30tb.ai",
+        "g1.play.30tb",
+        "g1.play.20tb.12month",
+        "g1.play.20tb.6month",
+        "g1.play.20tb.3month",
+        "g1.play.20tb.1month",
+        "g1.play.30tb.12month",
+        "g1.play.30tb.1month",
+        "g1.play.ai.pro.12month",
+        "g1.play.ai.ultra.12month",
+        "g1.play.ai.ultra.3month",
+        "g1.play.ai.ultra.1month",
+        "g1.play.ultra",
+        "g1.play.ultra.20tb",
+        "g1.play.ultra.30tb",
+        "g1.ai.ultra.20tb",
+        "g1.ai.ultra.30tb",
+        "g1.20tb.12months_eft",
+        "g1.20tb.1month_eft",
+        "g1.30tb.12months_eft",
+        "g1.30tb.1month_eft",
+        "g1.20tb.ai.subs_variant",
+        "g1.30tb.ai.subs_variant",
+        "g1.ai.ultra.subs_variant",
+        "g1.play.20tb.subs_variant",
+        "g1.play.30tb.subs_variant",
+        "g1.play.ai.ultra.subs_variant",
+        "g1.20tb.subs_variant",
+        "g1.30tb.subs_variant",
+        "g1.30tb.3months_ip_50p.acq",
+        "g1.20tb.3months_ip_50p.acq",
+        "g1.ai.ultra.3months_ip_50p.acq",
+    )
+
+    val aiProPlusSkus: List<String> = listOf(
+        "g1.2tb.ai.subs_variant",
+        "g1.ai.pro",
+        "g1.ai.plus",
+        "g1.ai",
+        "g1.2tb.ai",
+        "g1.5tb.ai",
+        "g1.10tb.ai",
+        "g1.5tb.ai.subs_variant",
+        "g1.10tb.ai.subs_variant",
+        "g1.ai.pro.subs_variant",
+        "g1.ai.plus.subs_variant",
+        "g1.play.ai",
+        "g1.play.ai.plus",
+        "g1.play.ai.pro.subs_variant",
+        "g1.play.ai.plus.subs_variant",
+        "g1.play.pro",
+        "g1.play.plus",
+        "g1.pro",
+        "g1.plus",
+        "g1.premium",
+        "g1.play",
+        "g1.2tb.ai.12months_eft",
+        "g1.2tb.ai.1month_eft",
+        "g1.5tb.ai.12months_eft",
+        "g1.ai.student",
+        "g1.play.ai.student",
+        "g1.2tb.ai.student",
+    )
+
+    val storageSkus: List<String> = listOf(
         "g1.30gb",
         "g1.30gb.1month_eft",
         "g1.100gb",
+        "g1.100gb.1month_eft",
         "g1.100gb.3months_ip_83p.acq",
         "g1.200gb",
+        "g1.200gb.1month_eft",
         "g1.200gb.3months_ip_83p.acq",
         "g1.helium",
         "g1.helium.3months_ip_83p.acq",
         "g1.2tb",
+        "g1.2tb.subs_variant",
         "g1.2tb.3months_ip_85p.acq",
         "g1.2tb.12months_eft",
         "g1.2tb.1month_eft",
         "g1.5tb",
+        "g1.5tb.subs_variant",
         "g1.5tb.3months_ip_75p.acq",
+        "g1.5tb.12months_eft",
+        "g1.5tb.1month_eft",
         "g1.10tb",
-        "g1.20tb",
-        "g1.20tb.12months_eft",
-        "g1.30tb",
-        "g1.30tb.12months_eft",
-        "g1.30tb.1month_eft",
-        // AI tiers and Play trial catalog variants
-        "g1.play.20tb",
-        "g1.play.20tb.12month",
-        "g1.play.30tb",
-        "g1.play.ai.pro",
-        "g1.play.ai.pro.12month",
-        "g1.play.ai.plus",
-        "g1.play.ai.ultra",
-        "g1.play.ai",
+        "g1.10tb.1month_eft",
+        "g1.play.30gb",
+        "g1.play.100gb",
+        "g1.play.200gb",
         "g1.play.2tb",
         "g1.play.5tb",
+        "g1.play.10tb",
         "g1.play.helium",
-        "g1.play.pro",
-        "g1.play.plus",
-        "g1.play",
-        "g1.2tb.ai.subs_variant",
-        "g1.2tb.ai",
-        "g1.5tb.ai",
-        "g1.20tb.ai",
-        "g1.30tb.ai",
-        "g1.ai",
-        "g1.ai.pro",
-        "g1.ai.plus",
-        "g1.ai.ultra",
-        "g1.ultra",
-        "g1.ultra.20tb",
-        "g1.ultra.30tb",
-        "g1.pro",
-        "g1.plus",
-        "g1.premium",
-        // Bundled benefits and add-ons
+    )
+
+    val addonSkus: List<String> = listOf(
         "g1.youtube_premium_individual_add_on",
         "g1.youtube_premium_family_add_on",
         "g1.home_premium",
@@ -72,9 +135,35 @@ internal object SkuCatalog {
         "g1.nest_aware_plus",
         "g1.fitbit_premium",
         "g1.play_pass",
+        "g1.play.pass",
+        "g1.2tb.play_pass",
     )
 
+    val defaultSkus: List<String> = ultraSkus + aiProPlusSkus + storageSkus + addonSkus
+
+    private val ultraSet: Set<String> = ultraSkus.toSet()
+    private val aiSet: Set<String> = aiProPlusSkus.toSet()
+    private val storageSet: Set<String> = storageSkus.toSet()
+    private val addonSet: Set<String> = addonSkus.toSet()
     private val defaultSkuSet: Set<String> = defaultSkus.toSet()
+
+    fun categoryOf(sku: String, title: String = ""): SkuCategory {
+        val lowSku = sku.lowercase()
+        val lowTitle = title.lowercase()
+        if (sku in ultraSet || "ultra" in lowSku || "20tb" in lowSku || "30tb" in lowSku || "ultra" in lowTitle) {
+            return SkuCategory.ULTRA
+        }
+        if (sku in aiSet || ".ai" in lowSku || "ai_" in lowSku || "ai pro" in lowTitle || "ai plus" in lowTitle) {
+            return SkuCategory.AI_PRO_PLUS
+        }
+        if (sku in addonSet || "youtube" in lowSku || "nest" in lowSku || "fitbit" in lowSku || "play_pass" in lowSku || "home" in lowSku || "health" in lowSku) {
+            return SkuCategory.ADDON
+        }
+        if (sku in storageSet) {
+            return SkuCategory.STORAGE
+        }
+        return SkuCategory.DYNAMIC
+    }
 
     fun recordObserved(candidates: Collection<*>?): Int {
         if (candidates.isNullOrEmpty()) return 0

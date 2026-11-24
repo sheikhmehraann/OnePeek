@@ -29,24 +29,41 @@ internal class BillingSession(activity: Activity) {
     @Volatile
     private var closed = false
 
+    private enum class FilterMode {
+        FREE_TRIALS,
+        ULTRA_TRIALS,
+        TRIALS_AND_PROMOS,
+        ALL,
+    }
+
     private data class OfferEntry(
         val product: ProductDetails,
         val details: ProductDetails.SubscriptionOfferDetails,
         val phases: List<OfferPhase>,
     ) {
-        val isFreeIntro: Boolean
-            get() = OfferPricing.hasFreeIntro(phases)
+        val category: SkuCategory = SkuCatalog.categoryOf(product.productId, product.title)
+        val kind: OfferKind = OfferPricing.classify(phases)
+        val isFreeIntro: Boolean = kind == OfferKind.FREE_TRIAL
+        val isPromoOrTrial: Boolean = kind != OfferKind.BASE_PLAN
+        val isUltra: Boolean = category == SkuCategory.ULTRA
+        val isEft: Boolean = OfferPricing.isEft(details.offerId, details.basePlanId, details.offerTags)
+        val freeDays: Int = OfferPricing.freeIntroDays(phases)
+        val discountPct: Int = OfferPricing.introDiscountPercent(phases)
 
-        val freeDays: Int
-            get() = OfferPricing.freeIntroDays(phases)
+        val kindRank: Int = when (kind) {
+            OfferKind.FREE_TRIAL -> 2
+            OfferKind.INTRO_PROMO -> 1
+            OfferKind.BASE_PLAN -> 0
+        }
 
         val dedupKey: String
             get() = "${product.productId}|${details.basePlanId}|${details.offerId.orEmpty()}|${details.offerToken}"
 
         fun rowLabel(activity: Activity): String {
             val id = details.offerId ?: details.basePlanId
-            val priceSummary = OfferPricing.formatCompactPrice(phases)
-            return ModuleResources.text(
+            val priceSummary = OfferPricing.formatCompactPrice(phases, isEft)
+            val prefix = if (isUltra) "[ULTRA] " else ""
+            return prefix + ModuleResources.text(
                 activity,
                 R.string.offer_row,
                 product.productId,
@@ -105,7 +122,7 @@ internal class BillingSession(activity: Activity) {
     private fun fetchAllBatches(billing: BillingClient, id: Int) {
         val batches = SkuCatalog.chunkedSkus()
         if (batches.isEmpty()) {
-            onUi(id) { showOfferList(it, id, emptyList(), trialsOnly = false) }
+            onUi(id) { showOfferList(it, id, emptyList(), FilterMode.ALL) }
             return
         }
 
@@ -164,18 +181,13 @@ internal class BillingSession(activity: Activity) {
                             synchronized(lock) {
                                 hadSuccess = okBatches > 0
                                 error = lastError
-                                snapshot = collected.sortedWith(
-                                    compareByDescending<OfferEntry> { it.isFreeIntro }
-                                        .thenByDescending { it.freeDays }
-                                        .thenBy { it.product.productId }
-                                        .thenBy { it.details.offerId ?: it.details.basePlanId },
-                                )
+                                snapshot = sortOffers(collected)
                             }
                             if (!hadSuccess && error != null) {
                                 fail(id, R.string.error_query_failed, error.responseCode, error.debugMessage)
                             } else {
-                                val defaultTrialsOnly = snapshot.any { it.isFreeIntro }
-                                onUi(id) { showOfferList(it, id, snapshot, trialsOnly = defaultTrialsOnly) }
+                                val initialMode = defaultFilterMode(snapshot)
+                                onUi(id) { showOfferList(it, id, snapshot, initialMode) }
                             }
                         }
                     },
@@ -183,18 +195,40 @@ internal class BillingSession(activity: Activity) {
             } catch (t: Throwable) {
                 Log.e(TAG, "Product details batch failed", t)
                 if (remaining.decrementAndGet() == 0) {
-                    val snapshot = synchronized(lock) { collected.toList() }
+                    val snapshot = synchronized(lock) { sortOffers(collected) }
                     if (snapshot.isEmpty()) {
                         fail(id, R.string.error_query_exception, t.javaClass.simpleName)
                     } else {
-                        onUi(id) { showOfferList(it, id, snapshot, trialsOnly = snapshot.any { e -> e.isFreeIntro }) }
+                        onUi(id) { showOfferList(it, id, snapshot, defaultFilterMode(snapshot)) }
                     }
                 }
             }
         }
     }
 
-    private fun showOfferList(activity: Activity, id: Int, allOffers: List<OfferEntry>, trialsOnly: Boolean) {
+    private fun sortOffers(entries: List<OfferEntry>): List<OfferEntry> = entries.sortedWith(
+        compareByDescending<OfferEntry> { it.kindRank }
+            .thenByDescending { it.isUltra }
+            .thenByDescending { it.freeDays }
+            .thenByDescending { it.discountPct }
+            .thenBy { it.product.productId }
+            .thenBy { it.details.offerId ?: it.details.basePlanId },
+    )
+
+    private fun defaultFilterMode(offers: List<OfferEntry>): FilterMode = when {
+        offers.any { it.isFreeIntro } -> FilterMode.FREE_TRIALS
+        offers.any { it.isPromoOrTrial } -> FilterMode.TRIALS_AND_PROMOS
+        else -> FilterMode.ALL
+    }
+
+    private fun filterOffers(allOffers: List<OfferEntry>, mode: FilterMode): List<OfferEntry> = when (mode) {
+        FilterMode.FREE_TRIALS -> allOffers.filter { it.isFreeIntro }
+        FilterMode.ULTRA_TRIALS -> allOffers.filter { it.isUltra && it.isPromoOrTrial }
+        FilterMode.TRIALS_AND_PROMOS -> allOffers.filter { it.isPromoOrTrial }
+        FilterMode.ALL -> allOffers
+    }
+
+    private fun showOfferList(activity: Activity, id: Int, allOffers: List<OfferEntry>, mode: FilterMode) {
         if (allOffers.isEmpty()) {
             AlertDialog.Builder(activity)
                 .setTitle(text(activity, R.string.dialog_offers_title))
@@ -207,41 +241,71 @@ internal class BillingSession(activity: Activity) {
             return
         }
 
-        val trialOffers = allOffers.filter { it.isFreeIntro }
-        val visible = if (trialsOnly && trialOffers.isNotEmpty()) trialOffers else allOffers
-        val showingTrialsOnly = trialsOnly && trialOffers.isNotEmpty()
+        val filtered = filterOffers(allOffers, mode)
+        val effectiveMode = if (filtered.isNotEmpty()) mode else FilterMode.ALL
+        val visible = if (filtered.isNotEmpty()) filtered else allOffers
         val observed = SkuCatalog.observedCount()
+        val liveSuffix = if (observed > 0) text(activity, R.string.title_live_suffix, observed) else ""
 
-        val title = when {
-            showingTrialsOnly && observed > 0 -> text(activity, R.string.dialog_trials_count_live, visible.size, allOffers.size, observed)
-            showingTrialsOnly -> text(activity, R.string.dialog_trials_count, visible.size, allOffers.size)
-            observed > 0 -> text(activity, R.string.dialog_all_count_live, allOffers.size, trialOffers.size, observed)
-            else -> text(activity, R.string.dialog_all_count, allOffers.size, trialOffers.size)
+        val title = when (effectiveMode) {
+            FilterMode.FREE_TRIALS -> text(activity, R.string.dialog_trials_count, visible.size, allOffers.size) + liveSuffix
+            FilterMode.ULTRA_TRIALS -> text(activity, R.string.dialog_ultra_count, visible.size, allOffers.size) + liveSuffix
+            FilterMode.TRIALS_AND_PROMOS -> text(activity, R.string.dialog_promos_count, visible.size, allOffers.size) + liveSuffix
+            FilterMode.ALL -> text(activity, R.string.dialog_all_count, allOffers.size, allOffers.count { it.isFreeIntro }) + liveSuffix
         }
 
-        val builder = AlertDialog.Builder(activity)
+        AlertDialog.Builder(activity)
             .setTitle(title)
             .setItems(visible.map { it.rowLabel(activity) }.toTypedArray()) { _, index ->
                 if (isCurrent(id)) {
-                    showOfferDetail(activity, id, visible[index], allOffers, showingTrialsOnly)
+                    showOfferDetail(activity, id, visible[index], allOffers, effectiveMode)
                 }
+            }
+            .setPositiveButton(text(activity, R.string.action_filter)) { _, _ ->
+                if (isCurrent(id)) showFilterPicker(activity, id, allOffers, effectiveMode)
             }
             .setNeutralButton(text(activity, R.string.action_add_sku)) { _, _ ->
                 if (isCurrent(id)) showCustomSkuDialog(activity, id)
             }
             .setNegativeButton(text(activity, R.string.action_close), null)
+            .show()
+    }
 
-        if (trialOffers.isNotEmpty() && trialOffers.size != allOffers.size) {
-            val toggleLabel = if (showingTrialsOnly) {
-                text(activity, R.string.action_show_all, allOffers.size)
-            } else {
-                text(activity, R.string.action_show_trials, trialOffers.size)
+    private fun showFilterPicker(activity: Activity, id: Int, allOffers: List<OfferEntry>, current: FilterMode) {
+        val trialCount = allOffers.count { it.isFreeIntro }
+        val ultraPromoCount = allOffers.count { it.isUltra && it.isPromoOrTrial }
+        val promoCount = allOffers.count { it.isPromoOrTrial }
+        val modes = listOf(
+            FilterMode.FREE_TRIALS,
+            FilterMode.ULTRA_TRIALS,
+            FilterMode.TRIALS_AND_PROMOS,
+            FilterMode.ALL,
+        )
+        val labels = arrayOf(
+            text(activity, R.string.filter_free_trials, trialCount),
+            text(activity, R.string.filter_ultra_trials, ultraPromoCount),
+            text(activity, R.string.filter_trials_and_promos, promoCount),
+            text(activity, R.string.filter_all_offers, allOffers.size),
+        )
+        AlertDialog.Builder(activity)
+            .setTitle(text(activity, R.string.dialog_filter_title))
+            .setSingleChoiceItems(labels, modes.indexOf(current)) { dialog, which ->
+                dialog.dismiss()
+                if (isCurrent(id)) {
+                    val chosen = modes[which]
+                    val target = filterOffers(allOffers, chosen)
+                    if (target.isEmpty()) {
+                        toastShort(R.string.status_filter_empty)
+                        showOfferList(activity, id, allOffers, current)
+                    } else {
+                        showOfferList(activity, id, allOffers, chosen)
+                    }
+                }
             }
-            builder.setPositiveButton(toggleLabel) { _, _ ->
-                if (isCurrent(id)) showOfferList(activity, id, allOffers, trialsOnly = !showingTrialsOnly)
+            .setNegativeButton(text(activity, R.string.action_cancel)) { _, _ ->
+                if (isCurrent(id)) showOfferList(activity, id, allOffers, current)
             }
-        }
-        builder.show()
+            .show()
     }
 
     private fun showCustomSkuDialog(activity: Activity, id: Int) {
@@ -271,7 +335,7 @@ internal class BillingSession(activity: Activity) {
         id: Int,
         offer: OfferEntry,
         allOffers: List<OfferEntry>,
-        trialsOnly: Boolean,
+        mode: FilterMode,
     ) {
         val summary = formatOfferSummary(activity, offer)
         val message = summary + text(activity, R.string.detail_disclaimer)
@@ -280,13 +344,13 @@ internal class BillingSession(activity: Activity) {
             .setTitle(text(activity, R.string.dialog_details_title))
             .setMessage(message)
             .setNegativeButton(text(activity, R.string.action_back)) { _, _ ->
-                if (isCurrent(id)) showOfferList(activity, id, allOffers, trialsOnly)
+                if (isCurrent(id)) showOfferList(activity, id, allOffers, mode)
             }
             .setNeutralButton(text(activity, R.string.action_copy)) { _, _ ->
                 copyToClipboard(activity, summary)
             }
 
-        if (offer.isFreeIntro) {
+        if (offer.isPromoOrTrial) {
             dialog.setPositiveButton(text(activity, R.string.action_checkout)) { _, _ ->
                 AlertDialog.Builder(activity)
                     .setTitle(text(activity, R.string.confirm_title))
@@ -328,6 +392,8 @@ internal class BillingSession(activity: Activity) {
     }
 
     private fun formatOfferSummary(activity: Activity, offer: OfferEntry): String = buildString {
+        append(text(activity, R.string.detail_category, categoryLabel(activity, offer.category)))
+        append(text(activity, R.string.detail_kind, kindLabel(activity, offer)))
         append(text(activity, R.string.detail_product, offer.product.productId))
         if (offer.product.title.isNotBlank()) {
             append(text(activity, R.string.detail_title, offer.product.title))
@@ -340,6 +406,20 @@ internal class BillingSession(activity: Activity) {
         }
         append(text(activity, R.string.detail_phases_header))
         append(formatPhases(activity, offer.phases))
+    }
+
+    private fun categoryLabel(activity: Activity, category: SkuCategory): String = when (category) {
+        SkuCategory.ULTRA -> text(activity, R.string.category_ultra)
+        SkuCategory.AI_PRO_PLUS -> text(activity, R.string.category_ai_pro)
+        SkuCategory.STORAGE -> text(activity, R.string.category_storage)
+        SkuCategory.ADDON -> text(activity, R.string.category_addon)
+        SkuCategory.DYNAMIC -> text(activity, R.string.category_dynamic)
+    }
+
+    private fun kindLabel(activity: Activity, offer: OfferEntry): String = when (offer.kind) {
+        OfferKind.FREE_TRIAL -> if (offer.isEft) text(activity, R.string.kind_free_eft) else text(activity, R.string.kind_free_trial)
+        OfferKind.INTRO_PROMO -> text(activity, R.string.kind_intro_promo, offer.discountPct)
+        OfferKind.BASE_PLAN -> text(activity, R.string.kind_base_plan)
     }
 
     private fun formatPhases(activity: Activity, phases: List<OfferPhase>): String {
