@@ -3,9 +3,10 @@
     <string name="app_name">OnePeek</string>
     <string name="button_inspect">Offers</string>
     <string name="button_inspect_desc">Inspect Google One Play Billing offers</string>
-    <string name="status_querying">Querying Play Billing offers...</string>
+    <string name="status_querying">Scanning %1$d Google One SKUs...</string>
     <string name="status_purchase_callback">Play billing callback code: %1$d</string>
     <string name="status_copied">Offer details copied</string>
+    <string name="status_invalid_sku">Enter one or more valid SKU IDs</string>
     <string name="error_connect_failed">Billing connection failed (%1$d): %2$s</string>
     <string name="error_disconnected">Play Billing disconnected. Query again before opening checkout.</string>
     <string name="error_init_failed">Billing client init failed: %1$s</string>
@@ -13,12 +14,16 @@
     <string name="error_query_exception">Offer query threw %1$s</string>
     <string name="error_checkout_failed">Checkout launch failed (%1$d): %2$s</string>
     <string name="error_checkout_exception">Checkout launch threw %1$s</string>
-    <string name="tag_free_trial">Free intro</string>
-    <string name="tag_paid">Paid</string>
     <string name="offer_row">%1$s | %2$s | %3$s</string>
     <string name="dialog_offers_title">Google One Offers</string>
-    <string name="dialog_offers_count">Google One Offers (%1$d)</string>
+    <string name="dialog_trials_count">Free Trials (%1$d of %2$d offers)</string>
+    <string name="dialog_trials_count_live">Free Trials (%1$d of %2$d | +%3$d live)</string>
+    <string name="dialog_all_count">All Offers (%1$d | %2$d trials)</string>
+    <string name="dialog_all_count_live">All Offers (%1$d | %2$d trials | +%3$d live)</string>
     <string name="dialog_offers_empty">Play Billing returned no offers for the tracked Google One SKUs on this account.</string>
+    <string name="dialog_custom_sku_title">Add Custom SKU</string>
+    <string name="dialog_custom_sku_message">Enter one or more Google One subscription SKUs separated by commas or spaces.</string>
+    <string name="hint_custom_sku">g1.play.20tb, g1.100gb</string>
     <string name="dialog_details_title">Offer Breakdown</string>
     <string name="detail_product">SKU: %1$s\n</string>
     <string name="detail_title">Title: %1$s\n</string>
@@ -43,4 +48,8 @@
     <string name="action_checkout">Open Play Checkout</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_continue">Continue</string>
+    <string name="action_add_sku">Add SKU</string>
+    <string name="action_query">Query</string>
+    <string name="action_show_all">All (%1$d)</string>
+    <string name="action_show_trials">Trials (%1$d)</string>
 </resources>

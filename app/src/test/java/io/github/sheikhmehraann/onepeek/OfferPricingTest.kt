@@ -66,4 +66,23 @@ class OfferPricingTest {
         assertEquals(74, OfferPricing.freeIntroDays(chainedFreeIntro))
         assertTrue(OfferPricing.freeIntroDays(singleYear) > OfferPricing.freeIntroDays(threeMonthlyFree))
     }
+
+    @Test
+    fun formatsCompactRowSummaryForTrialsAndPaidOffers() {
+        val trialWithRenewal = listOf(
+            OfferPhase(0L, "$0.00", "P1Y", 1),
+            OfferPhase(99_990_000L, "$99.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
+        )
+        val multiCycleTrial = listOf(
+            OfferPhase(0L, "$0.00", "P1M", 3),
+            OfferPhase(19_990_000L, "$19.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
+        )
+        val paidOnly = listOf(
+            OfferPhase(9_990_000L, "$9.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE),
+        )
+
+        assertEquals("Free 1Y -> $99.99/P1M", OfferPricing.formatCompactPrice(trialWithRenewal))
+        assertEquals("Free 3M -> $19.99/P1M", OfferPricing.formatCompactPrice(multiCycleTrial))
+        assertEquals("$9.99/P1M", OfferPricing.formatCompactPrice(paidOnly))
+    }
 }
