@@ -275,8 +275,7 @@ internal class BillingSession(activity: Activity) {
         }
     }
 
-    private fun text(activity: Activity, resId: Int, vararg args: Any): String =
-        ModuleResources.text(activity, resId, *args)
+    private fun text(activity: Activity, resId: Int, vararg args: Any): String = ModuleResources.text(activity, resId, *args)
 
     private fun fail(id: Int, resId: Int, vararg args: Any) {
         onUi(id) { activity ->
