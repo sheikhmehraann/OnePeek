@@ -2,6 +2,19 @@
 
 All notable changes to OnePeek are documented in this file.
 
+## [0.4.0-beta.1] - 2026-11-24
+
+Deep Ultra 5x/20x differentiation, dual-direction Play Billing live SKU capture, and raw `ProductDetails` metadata extraction informed by deep DEX diffing of Google One `1.335` -> `1.336`, Billing `5.2.1` `ProductDetails` bytecode inspection, and live `one.google.com` pricing feed (`pricing_2026_11_16.json`) verification.
+
+### Added
+
+- Expanded `SkuCatalog` to 146 unique categorized SKUs (56 Ultra 5x/20x, 37 AI Pro/Plus/Student including 400 GB, 40 Core Storage & EFT, and 13 Add-On/Bundle including `g1.home_premium_advanced`), incorporating `.annual` subscription SKUs verified on `one.google.com/about/plans` (`g1.30gb.annual`, `g1.100gb.annual`, `g1.2tb.ai.annual`, plus high-tier `.annual` equivalents) and expanded Ultra 5x/20x duration and EFT families.
+- Added `UltraTier` classification distinguishing **Google AI Ultra 20x (30 TB)** (`[ULTRA 20x]`, `g1.play.ai.pro`, `g1.30tb`) from **Google AI Ultra 5x (20 TB)** (`[ULTRA 5x]`, `g1.play.20tb`, `g1.20tb`) and generic/dynamic Ultra SKUs (`[ULTRA]`) across row labels, sorting, and Offer Breakdown.
+- Added dual-direction passive SKU capture in `MainHook`: hooks `Bundle.putStringArrayList` for both `ITEM_ID_LIST` and `SKU_SERIALIZED_DOCID_LIST` (stripping `subs:com.google.android.apps.subscriptions.red:`) and adds protective hook `onepeek.bundle.details` on `Bundle.getStringArrayList` for `DETAILS_LIST` and `UNFETCHED_PRODUCT_LIST` returned to Google One's Billing `9.2.0` client.
+- Added pure-Kotlin `OfferPricing.parseRawOfferMeta` to extract `serializedDocid` and `installmentPlanDetails` (`commitmentPaymentsCount`, `subsequentCommitmentPaymentsCount`) from Billing `5.2.1` `ProductDetails` raw JSON payloads without reflection.
+- Upgraded the `Filter` picker to 5 instant in-memory views: `Ultra Free Trials`, `All Ultra Plans & Promos`, `All Free Trials`, `All Trials & Intro Promos`, and `All Returned Offers`.
+- Added unit tests covering `UltraTier`, dual-direction `SKU_SERIALIZED_DOCID_LIST` / `DETAILS_LIST` capture, and per-offer `RawOfferMeta` JSON isolation.
+
 ## [0.3.0-beta.1] - 2026-11-24
 
 Deep Google AI Ultra and all-tier trial expansion informed by longitudinal analysis across official Google One `1.191.571481160` (2025, Billing `6.0.1`), `1.335.1018429345` (`680972`), and `1.336.1024043136` (`682232`, Billing `9.2.0`).

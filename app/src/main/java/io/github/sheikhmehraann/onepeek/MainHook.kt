@@ -54,20 +54,35 @@ class MainHook : XposedModule() {
                     chain.proceed(chain.args.toTypedArray())
                 }
 
-            // Passively collect server-delivered SKUs when Google One builds Play Billing queries.
+            // Passively collect outbound server-delivered SKUs and doc IDs sent to Play Billing.
             hook(Bundle::class.java.getDeclaredMethod("putStringArrayList", String::class.java, ArrayList::class.java))
                 .setId("onepeek.bundle.skus")
                 .setExceptionMode(ExceptionMode.PROTECTIVE)
                 .intercept { chain ->
                     val args = chain.args
-                    if (args.size >= 2 && args[0] == ITEM_ID_LIST_KEY) {
-                        val list = args[1] as? Collection<*>
-                        val added = SkuCatalog.recordObserved(list)
+                    if (args.size >= 2 && args[0] in OUTBOUND_SKU_KEYS) {
+                        val added = SkuCatalog.recordObserved(args[1] as? Collection<*>)
                         if (added > 0) {
-                            Log.i(TAG, "Captured $added live SKU(s) from Google One")
+                            Log.i(TAG, "Captured $added live outbound SKU(s) from Google One")
                         }
                     }
                     chain.proceed(args.toTypedArray())
+                }
+
+            // Passively collect inbound product IDs returned in Play Billing 9.2.0 response bundles.
+            hook(Bundle::class.java.getDeclaredMethod("getStringArrayList", String::class.java))
+                .setId("onepeek.bundle.details")
+                .setExceptionMode(ExceptionMode.PROTECTIVE)
+                .intercept { chain ->
+                    val args = chain.args
+                    val result = chain.proceed(args.toTypedArray())
+                    if (args.isNotEmpty() && args[0] in INBOUND_DETAILS_KEYS) {
+                        val added = SkuCatalog.recordObservedDetailsJson(result as? Collection<*>)
+                        if (added > 0) {
+                            Log.i(TAG, "Captured $added live inbound SKU(s) from Play Billing response")
+                        }
+                    }
+                    result
                 }
 
             Log.i(TAG, "Google One hooks installed")
@@ -128,7 +143,16 @@ class MainHook : XposedModule() {
         const val TAG = "OnePeek"
         const val GOOGLE_ONE_PACKAGE = "com.google.android.apps.subscriptions.red"
         const val BUTTON_TAG = "onepeek.googleone.button"
-        const val ITEM_ID_LIST_KEY = "ITEM_ID_LIST"
+
+        val OUTBOUND_SKU_KEYS = setOf(
+            "ITEM_ID_LIST",
+            "SKU_SERIALIZED_DOCID_LIST",
+        )
+
+        val INBOUND_DETAILS_KEYS = setOf(
+            "DETAILS_LIST",
+            "UNFETCHED_PRODUCT_LIST",
+        )
 
         val EXCLUDED_PREFIXES = listOf(
             "com.android.billingclient.",

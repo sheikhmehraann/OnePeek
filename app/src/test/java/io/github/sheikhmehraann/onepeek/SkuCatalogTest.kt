@@ -17,8 +17,11 @@ class SkuCatalogTest {
         assertTrue(SkuCatalog.ultraSkus.contains("g1.play.20tb"))
         assertTrue(SkuCatalog.ultraSkus.contains("g1.play.ai.pro"))
         assertTrue(SkuCatalog.ultraSkus.contains("g1.30tb"))
+        assertTrue(SkuCatalog.ultraSkus.contains("g1.30tb.annual"))
         assertTrue(SkuCatalog.aiProPlusSkus.contains("g1.2tb.ai.subs_variant"))
+        assertTrue(SkuCatalog.aiProPlusSkus.contains("g1.2tb.ai.annual"))
         assertTrue(SkuCatalog.storageSkus.contains("g1.100gb"))
+        assertTrue(SkuCatalog.storageSkus.contains("g1.100gb.annual"))
         val chunks = SkuCatalog.chunkedSkus()
         assertTrue(chunks.isNotEmpty())
         assertTrue(chunks.all { it.size in 1..SkuCatalog.BATCH_SIZE })
@@ -26,10 +29,13 @@ class SkuCatalogTest {
     }
 
     @Test
-    fun classifiesUltraAiStorageAddonAndLiveSkus() {
+    fun classifiesUltra5xUltra20xAiStorageAddonAndLiveSkus() {
+        assertEquals(UltraTier.ULTRA_5X_20TB, SkuCatalog.ultraTierOf("g1.play.20tb"))
+        assertEquals(UltraTier.ULTRA_20X_30TB, SkuCatalog.ultraTierOf("g1.play.ai.pro"))
+        assertEquals(UltraTier.ULTRA_20X_30TB, SkuCatalog.ultraTierOf("g1.30tb"))
+        assertEquals(UltraTier.ULTRA_20X_30TB, SkuCatalog.ultraTierOf("g1.future.plan", "Google AI Ultra (30 TB)"))
         assertEquals(SkuCategory.ULTRA, SkuCatalog.categoryOf("g1.play.20tb"))
         assertEquals(SkuCategory.ULTRA, SkuCatalog.categoryOf("g1.play.ai.pro"))
-        assertEquals(SkuCategory.ULTRA, SkuCatalog.categoryOf("g1.future.plan", "Google AI Ultra (30 TB)"))
         assertEquals(SkuCategory.AI_PRO_PLUS, SkuCatalog.categoryOf("g1.2tb.ai.subs_variant"))
         assertEquals(SkuCategory.STORAGE, SkuCatalog.categoryOf("g1.100gb"))
         assertEquals(SkuCategory.ADDON, SkuCatalog.categoryOf("g1.youtube_premium_individual_add_on"))
@@ -37,16 +43,33 @@ class SkuCatalogTest {
     }
 
     @Test
-    fun capturesLiveObservedSkusWithoutDuplicatingDefaults() {
-        val added = SkuCatalog.recordObserved(listOf("g1.100gb", "g1.black_friday.2026", "bad sku!", ""))
-        assertEquals(1, added)
-        assertEquals(1, SkuCatalog.observedCount())
-        assertEquals("g1.black_friday.2026", SkuCatalog.allSkus().first())
+    fun capturesLiveOutboundDocIdsAndInboundDetailsJsonWithoutDuplicatingDefaults() {
+        val outAdded = SkuCatalog.recordObserved(
+            listOf(
+                "g1.100gb",
+                "subs:com.google.android.apps.subscriptions.red:g1.black_friday.2026",
+                "bad sku!",
+                "",
+            ),
+        )
+        assertEquals(1, outAdded)
+
+        val inAdded = SkuCatalog.recordObservedDetailsJson(
+            listOf(
+                "{\"productId\":\"g1.early_access.ultra\",\"type\":\"subs\"}",
+                "{\"productId\":\"g1.play.20tb\",\"type\":\"subs\"}",
+            ),
+        )
+        assertEquals(1, inAdded)
+        assertEquals(2, SkuCatalog.observedCount())
+        assertTrue(SkuCatalog.allSkus().take(2).containsAll(listOf("g1.black_friday.2026", "g1.early_access.ultra")))
     }
 
     @Test
-    fun parsesCustomSkuList() {
-        val parsed = SkuCatalog.addCustom("g1.custom.tier1, g1.custom.tier2\ng1.play.20tb")
+    fun parsesCustomSkuListIncludingSerializedDocIds() {
+        val parsed = SkuCatalog.addCustom(
+            "g1.custom.tier1, subs:com.google.android.apps.subscriptions.red:g1.custom.tier2\ng1.play.20tb",
+        )
         assertEquals(listOf("g1.custom.tier1", "g1.custom.tier2", "g1.play.20tb"), parsed)
         assertTrue(SkuCatalog.allSkus().contains("g1.custom.tier1"))
         assertTrue(SkuCatalog.allSkus().contains("g1.custom.tier2"))

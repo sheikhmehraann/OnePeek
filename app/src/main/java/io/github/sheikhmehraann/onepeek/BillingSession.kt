@@ -30,8 +30,9 @@ internal class BillingSession(activity: Activity) {
     private var closed = false
 
     private enum class FilterMode {
+        ULTRA_FREE_TRIALS,
+        ULTRA_ALL,
         FREE_TRIALS,
-        ULTRA_TRIALS,
         TRIALS_AND_PROMOS,
         ALL,
     }
@@ -41,6 +42,7 @@ internal class BillingSession(activity: Activity) {
         val details: ProductDetails.SubscriptionOfferDetails,
         val phases: List<OfferPhase>,
     ) {
+        val ultraTier: UltraTier = SkuCatalog.ultraTierOf(product.productId, product.title)
         val category: SkuCategory = SkuCatalog.categoryOf(product.productId, product.title)
         val kind: OfferKind = OfferPricing.classify(phases)
         val isFreeIntro: Boolean = kind == OfferKind.FREE_TRIAL
@@ -49,11 +51,19 @@ internal class BillingSession(activity: Activity) {
         val isEft: Boolean = OfferPricing.isEft(details.offerId, details.basePlanId, details.offerTags)
         val freeDays: Int = OfferPricing.freeIntroDays(phases)
         val discountPct: Int = OfferPricing.introDiscountPercent(phases)
+        val rawMeta: RawOfferMeta = OfferPricing.parseRawOfferMeta(product.toString(), details.offerToken)
 
         val kindRank: Int = when (kind) {
             OfferKind.FREE_TRIAL -> 2
             OfferKind.INTRO_PROMO -> 1
             OfferKind.BASE_PLAN -> 0
+        }
+
+        val ultraRank: Int = when (ultraTier) {
+            UltraTier.ULTRA_20X_30TB -> 3
+            UltraTier.ULTRA_5X_20TB -> 2
+            UltraTier.ULTRA_GENERIC -> 1
+            UltraTier.NONE -> 0
         }
 
         val dedupKey: String
@@ -62,7 +72,12 @@ internal class BillingSession(activity: Activity) {
         fun rowLabel(activity: Activity): String {
             val id = details.offerId ?: details.basePlanId
             val priceSummary = OfferPricing.formatCompactPrice(phases, isEft)
-            val prefix = if (isUltra) "[ULTRA] " else ""
+            val prefix = when (ultraTier) {
+                UltraTier.ULTRA_20X_30TB -> "[ULTRA 20x] "
+                UltraTier.ULTRA_5X_20TB -> "[ULTRA 5x] "
+                UltraTier.ULTRA_GENERIC -> "[ULTRA] "
+                UltraTier.NONE -> ""
+            }
             return prefix + ModuleResources.text(
                 activity,
                 R.string.offer_row,
@@ -208,7 +223,7 @@ internal class BillingSession(activity: Activity) {
 
     private fun sortOffers(entries: List<OfferEntry>): List<OfferEntry> = entries.sortedWith(
         compareByDescending<OfferEntry> { it.kindRank }
-            .thenByDescending { it.isUltra }
+            .thenByDescending { it.ultraRank }
             .thenByDescending { it.freeDays }
             .thenByDescending { it.discountPct }
             .thenBy { it.product.productId }
@@ -218,12 +233,14 @@ internal class BillingSession(activity: Activity) {
     private fun defaultFilterMode(offers: List<OfferEntry>): FilterMode = when {
         offers.any { it.isFreeIntro } -> FilterMode.FREE_TRIALS
         offers.any { it.isPromoOrTrial } -> FilterMode.TRIALS_AND_PROMOS
+        offers.any { it.isUltra } -> FilterMode.ULTRA_ALL
         else -> FilterMode.ALL
     }
 
     private fun filterOffers(allOffers: List<OfferEntry>, mode: FilterMode): List<OfferEntry> = when (mode) {
+        FilterMode.ULTRA_FREE_TRIALS -> allOffers.filter { it.isUltra && it.isFreeIntro }
+        FilterMode.ULTRA_ALL -> allOffers.filter { it.isUltra }
         FilterMode.FREE_TRIALS -> allOffers.filter { it.isFreeIntro }
-        FilterMode.ULTRA_TRIALS -> allOffers.filter { it.isUltra && it.isPromoOrTrial }
         FilterMode.TRIALS_AND_PROMOS -> allOffers.filter { it.isPromoOrTrial }
         FilterMode.ALL -> allOffers
     }
@@ -248,8 +265,9 @@ internal class BillingSession(activity: Activity) {
         val liveSuffix = if (observed > 0) text(activity, R.string.title_live_suffix, observed) else ""
 
         val title = when (effectiveMode) {
+            FilterMode.ULTRA_FREE_TRIALS -> text(activity, R.string.dialog_ultra_trials_count, visible.size, allOffers.size) + liveSuffix
+            FilterMode.ULTRA_ALL -> text(activity, R.string.dialog_ultra_all_count, visible.size, allOffers.size) + liveSuffix
             FilterMode.FREE_TRIALS -> text(activity, R.string.dialog_trials_count, visible.size, allOffers.size) + liveSuffix
-            FilterMode.ULTRA_TRIALS -> text(activity, R.string.dialog_ultra_count, visible.size, allOffers.size) + liveSuffix
             FilterMode.TRIALS_AND_PROMOS -> text(activity, R.string.dialog_promos_count, visible.size, allOffers.size) + liveSuffix
             FilterMode.ALL -> text(activity, R.string.dialog_all_count, allOffers.size, allOffers.count { it.isFreeIntro }) + liveSuffix
         }
@@ -272,18 +290,21 @@ internal class BillingSession(activity: Activity) {
     }
 
     private fun showFilterPicker(activity: Activity, id: Int, allOffers: List<OfferEntry>, current: FilterMode) {
+        val ultraFreeCount = allOffers.count { it.isUltra && it.isFreeIntro }
+        val ultraAllCount = allOffers.count { it.isUltra }
         val trialCount = allOffers.count { it.isFreeIntro }
-        val ultraPromoCount = allOffers.count { it.isUltra && it.isPromoOrTrial }
         val promoCount = allOffers.count { it.isPromoOrTrial }
         val modes = listOf(
+            FilterMode.ULTRA_FREE_TRIALS,
+            FilterMode.ULTRA_ALL,
             FilterMode.FREE_TRIALS,
-            FilterMode.ULTRA_TRIALS,
             FilterMode.TRIALS_AND_PROMOS,
             FilterMode.ALL,
         )
         val labels = arrayOf(
+            text(activity, R.string.filter_ultra_free_trials, ultraFreeCount),
+            text(activity, R.string.filter_ultra_all, ultraAllCount),
             text(activity, R.string.filter_free_trials, trialCount),
-            text(activity, R.string.filter_ultra_trials, ultraPromoCount),
             text(activity, R.string.filter_trials_and_promos, promoCount),
             text(activity, R.string.filter_all_offers, allOffers.size),
         )
@@ -392,7 +413,7 @@ internal class BillingSession(activity: Activity) {
     }
 
     private fun formatOfferSummary(activity: Activity, offer: OfferEntry): String = buildString {
-        append(text(activity, R.string.detail_category, categoryLabel(activity, offer.category)))
+        append(text(activity, R.string.detail_category, categoryLabel(activity, offer)))
         append(text(activity, R.string.detail_kind, kindLabel(activity, offer)))
         append(text(activity, R.string.detail_product, offer.product.productId))
         if (offer.product.title.isNotBlank()) {
@@ -404,16 +425,35 @@ internal class BillingSession(activity: Activity) {
         if (offer.details.offerTags.isNotEmpty()) {
             append(text(activity, R.string.detail_tags, offer.details.offerTags.joinToString(", ")))
         }
+        if (offer.rawMeta.hasInstallmentPlan) {
+            append(
+                text(
+                    activity,
+                    R.string.detail_installment,
+                    offer.rawMeta.commitmentPayments,
+                    offer.rawMeta.subsequentCommitmentPayments,
+                ),
+            )
+        }
+        val docId = offer.rawMeta.serializedDocId
+        if (!docId.isNullOrBlank()) {
+            append(text(activity, R.string.detail_doc_id, docId))
+        }
         append(text(activity, R.string.detail_phases_header))
         append(formatPhases(activity, offer.phases))
     }
 
-    private fun categoryLabel(activity: Activity, category: SkuCategory): String = when (category) {
-        SkuCategory.ULTRA -> text(activity, R.string.category_ultra)
-        SkuCategory.AI_PRO_PLUS -> text(activity, R.string.category_ai_pro)
-        SkuCategory.STORAGE -> text(activity, R.string.category_storage)
-        SkuCategory.ADDON -> text(activity, R.string.category_addon)
-        SkuCategory.DYNAMIC -> text(activity, R.string.category_dynamic)
+    private fun categoryLabel(activity: Activity, offer: OfferEntry): String = when (offer.ultraTier) {
+        UltraTier.ULTRA_20X_30TB -> text(activity, R.string.category_ultra_20x)
+        UltraTier.ULTRA_5X_20TB -> text(activity, R.string.category_ultra_5x)
+        UltraTier.ULTRA_GENERIC -> text(activity, R.string.category_ultra)
+        UltraTier.NONE -> when (offer.category) {
+            SkuCategory.ULTRA -> text(activity, R.string.category_ultra)
+            SkuCategory.AI_PRO_PLUS -> text(activity, R.string.category_ai_pro)
+            SkuCategory.STORAGE -> text(activity, R.string.category_storage)
+            SkuCategory.ADDON -> text(activity, R.string.category_addon)
+            SkuCategory.DYNAMIC -> text(activity, R.string.category_dynamic)
+        }
     }
 
     private fun kindLabel(activity: Activity, offer: OfferEntry): String = when (offer.kind) {

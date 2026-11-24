@@ -96,4 +96,19 @@ class OfferPricingTest {
         assertEquals("Intro -50% 3M ($124.99) -> $249.99/P1M", OfferPricing.formatCompactPrice(ultraPromo))
         assertEquals("$9.99/P1M", OfferPricing.formatCompactPrice(paidOnly))
     }
+
+    @Test
+    fun parsesRawDocIdAndInstallmentPlanFromProductDetailsString() {
+        val fakeToString = "ProductDetails{jsonString='{\"productId\":\"g1.play.20tb\",\"serializedDocid\":\"subs:com.google.android.apps.subscriptions.red:g1.play.20tb\",\"subscriptionOfferDetails\":[{\"offerIdToken\":\"tok/base\",\"basePlanId\":\"monthly\"},{\"offerIdToken\":\"tok/ultra/12m\",\"offerId\":\"eft-12month\",\"installmentPlanDetails\":{\"commitmentPaymentsCount\":12,\"subsequentCommitmentPaymentsCount\":1}}]}', parsedJson={}}"
+
+        val baseMeta = OfferPricing.parseRawOfferMeta(fakeToString, "tok/base")
+        assertEquals("subs:com.google.android.apps.subscriptions.red:g1.play.20tb", baseMeta.serializedDocId)
+        assertFalse(baseMeta.hasInstallmentPlan)
+
+        val ultraMeta = OfferPricing.parseRawOfferMeta(fakeToString, "tok/ultra/12m")
+        assertEquals("subs:com.google.android.apps.subscriptions.red:g1.play.20tb", ultraMeta.serializedDocId)
+        assertTrue(ultraMeta.hasInstallmentPlan)
+        assertEquals(12, ultraMeta.commitmentPayments)
+        assertEquals(1, ultraMeta.subsequentCommitmentPayments)
+    }
 }

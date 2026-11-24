@@ -8,6 +8,15 @@ internal enum class OfferKind {
     BASE_PLAN,
 }
 
+internal data class RawOfferMeta(
+    val serializedDocId: String? = null,
+    val commitmentPayments: Int = 0,
+    val subsequentCommitmentPayments: Int = 0,
+) {
+    val hasInstallmentPlan: Boolean
+        get() = commitmentPayments > 0
+}
+
 internal data class OfferPhase(
     val amountMicros: Long,
     val formattedPrice: String,
@@ -25,6 +34,9 @@ internal data class OfferPhase(
 internal object OfferPricing {
     private val periodRegex = Regex("^P(\\d+)([DWMY])$")
     private val eftRegex = Regex(".*eft.*", RegexOption.IGNORE_CASE)
+    private val docIdRegex = Regex("\"serializedDocid\"\\s*:\\s*\"([^\"]+)\"")
+    private val commitRegex = Regex("\"commitmentPaymentsCount\"\\s*:\\s*(\\d+)")
+    private val subsequentCommitRegex = Regex("\"subsequentCommitmentPaymentsCount\"\\s*:\\s*(\\d+)")
 
     fun hasFreeIntro(phases: List<OfferPhase>): Boolean = phases.firstOrNull()?.amountMicros == 0L
 
@@ -114,6 +126,63 @@ internal object OfferPricing {
                 "${first.formattedPrice}/${first.billingPeriod}"
             }
         }
+    }
+
+    fun parseRawOfferMeta(productDetailsToString: String, offerToken: String): RawOfferMeta {
+        val rawJson = extractEmbeddedJson(productDetailsToString) ?: return RawOfferMeta()
+        val docId = docIdRegex.find(rawJson)?.groupValues?.get(1)
+        val offerWindow = findOfferObjectSlice(rawJson, offerToken)
+        if (offerWindow == null) {
+            return RawOfferMeta(serializedDocId = docId)
+        }
+        val commit = commitRegex.find(offerWindow)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val subsequent = subsequentCommitRegex.find(offerWindow)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        return RawOfferMeta(
+            serializedDocId = docId,
+            commitmentPayments = commit,
+            subsequentCommitmentPayments = subsequent,
+        )
+    }
+
+    private fun extractEmbeddedJson(productDetailsToString: String): String? {
+        val marker = "jsonString='"
+        val start = productDetailsToString.indexOf(marker)
+        if (start < 0) return null
+        val jsonStart = start + marker.length
+        val end = productDetailsToString.indexOf("', parsedJson=", jsonStart)
+        if (end <= jsonStart) return null
+        return productDetailsToString.substring(jsonStart, end)
+    }
+
+    private fun findOfferObjectSlice(rawJson: String, offerToken: String): String? {
+        if (offerToken.isEmpty()) return null
+        val escapedToken = offerToken.replace("/", "\\/")
+        val idx = rawJson.indexOf(offerToken).takeIf { it >= 0 }
+            ?: rawJson.indexOf(escapedToken).takeIf { it >= 0 }
+            ?: return null
+        var open = idx
+        var depth = 0
+        while (open >= 0) {
+            when (rawJson[open]) {
+                '}' -> depth += 1
+                '{' -> if (depth == 0) break else depth -= 1
+            }
+            open -= 1
+        }
+        if (open < 0) return null
+        var close = open
+        depth = 0
+        while (close < rawJson.length) {
+            when (rawJson[close]) {
+                '{' -> depth += 1
+                '}' -> {
+                    depth -= 1
+                    if (depth == 0) return rawJson.substring(open, close + 1)
+                }
+            }
+            close += 1
+        }
+        return null
     }
 
     private fun formatScaledPeriod(period: String, cycles: Int): String {
