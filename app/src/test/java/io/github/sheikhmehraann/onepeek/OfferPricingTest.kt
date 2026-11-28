@@ -117,4 +117,14 @@ class OfferPricingTest {
         assertEquals(12, ultraMeta.commitmentPayments)
         assertEquals(1, ultraMeta.subsequentCommitmentPayments)
     }
+
+    @Test
+    fun detectsBillingCurrencyFromPhases() {
+        val phases = listOf(
+            OfferPhase(0L, "$0.00", "P1Y", 1, currencyCode = ""),
+            OfferPhase(99_990_000L, "$99.99", "P1M", 0, OfferPhase.RECURRENCE_INFINITE, currencyCode = "USD"),
+        )
+        assertEquals("USD", OfferPricing.detectCurrency(phases))
+        assertEquals("", OfferPricing.detectCurrency(emptyList()))
+    }
 }

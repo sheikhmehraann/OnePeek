@@ -40,6 +40,7 @@
     <string name="detail_title">Title: %1$s\n</string>
     <string name="detail_offer_id">Offer ID: %1$s\n</string>
     <string name="detail_base_plan">Base plan: %1$s\n</string>
+    <string name="detail_currency">Currency: %1$s\n</string>
     <string name="detail_tags">Tags: %1$s\n</string>
     <string name="detail_installment">Installments: %1$d initial, %2$d subsequent\n</string>
     <string name="detail_doc_id">Doc ID: %1$s\n</string>

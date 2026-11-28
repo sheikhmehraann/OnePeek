@@ -51,6 +51,7 @@ internal class BillingSession(activity: Activity) {
         val isEft: Boolean = OfferPricing.isEft(details.offerId, details.basePlanId, details.offerTags)
         val freeDays: Int = OfferPricing.freeIntroDays(phases)
         val discountPct: Int = OfferPricing.introDiscountPercent(phases)
+        val currencyCode: String = OfferPricing.detectCurrency(phases)
         val rawMeta: RawOfferMeta = OfferPricing.parseRawOfferMeta(product.toString(), details.offerToken)
 
         val kindRank: Int = when (kind) {
@@ -176,6 +177,7 @@ internal class BillingSession(activity: Activity) {
                                                 billingPeriod = phase.billingPeriod,
                                                 billingCycles = phase.billingCycleCount,
                                                 recurrenceMode = phase.recurrenceMode,
+                                                currencyCode = phase.priceCurrencyCode.orEmpty(),
                                             )
                                         }
                                         val entry = OfferEntry(product, offer, phases)
@@ -264,13 +266,16 @@ internal class BillingSession(activity: Activity) {
         val visible = if (filtered.isNotEmpty()) filtered else allOffers
         val observed = SkuCatalog.observedCount()
         val liveSuffix = if (observed > 0) text(activity, R.string.title_live_suffix, observed) else ""
+        val currency = allOffers.firstNotNullOfOrNull { it.currencyCode.takeIf(String::isNotEmpty) }.orEmpty()
+        val currencySuffix = if (currency.isNotEmpty()) " | $currency" else ""
+        val suffix = currencySuffix + liveSuffix
 
         val title = when (effectiveMode) {
-            FilterMode.ULTRA_FREE_TRIALS -> text(activity, R.string.dialog_ultra_trials_count, visible.size, allOffers.size) + liveSuffix
-            FilterMode.ULTRA_ALL -> text(activity, R.string.dialog_ultra_all_count, visible.size, allOffers.size) + liveSuffix
-            FilterMode.FREE_TRIALS -> text(activity, R.string.dialog_trials_count, visible.size, allOffers.size) + liveSuffix
-            FilterMode.TRIALS_AND_PROMOS -> text(activity, R.string.dialog_promos_count, visible.size, allOffers.size) + liveSuffix
-            FilterMode.ALL -> text(activity, R.string.dialog_all_count, allOffers.size, allOffers.count { it.isFreeIntro }) + liveSuffix
+            FilterMode.ULTRA_FREE_TRIALS -> text(activity, R.string.dialog_ultra_trials_count, visible.size, allOffers.size) + suffix
+            FilterMode.ULTRA_ALL -> text(activity, R.string.dialog_ultra_all_count, visible.size, allOffers.size) + suffix
+            FilterMode.FREE_TRIALS -> text(activity, R.string.dialog_trials_count, visible.size, allOffers.size) + suffix
+            FilterMode.TRIALS_AND_PROMOS -> text(activity, R.string.dialog_promos_count, visible.size, allOffers.size) + suffix
+            FilterMode.ALL -> text(activity, R.string.dialog_all_count, allOffers.size, allOffers.count { it.isFreeIntro }) + suffix
         }
 
         AlertDialog.Builder(activity)
@@ -340,7 +345,9 @@ internal class BillingSession(activity: Activity) {
         val ultraPromos = allOffers.filter { it.isUltra && it.kind == OfferKind.INTRO_PROMO }
         val ultraAll = allOffers.filter { it.isUltra }
         val allTrials = allOffers.filter { it.isFreeIntro }
+        val currencies = allOffers.mapNotNull { it.currencyCode.takeIf(String::isNotEmpty) }.distinct().joinToString(", ").ifEmpty { "Unknown" }
         append("OnePeek Scan Report\n")
+        append("Billing currency: $currencies\n")
         append("Scanned SKUs: ${SkuCatalog.allSkus().size} (Ultra: ${SkuCatalog.ultraSkus.size}, Live captured: ${SkuCatalog.observedCount()})\n")
         append("Returned offers: ${allOffers.size} | Ultra free trials: ${ultraFree.size} | Ultra intro promos: ${ultraPromos.size} | Total Ultra: ${ultraAll.size} | All free trials: ${allTrials.size}\n")
         if (ultraAll.isNotEmpty()) {
@@ -452,6 +459,9 @@ internal class BillingSession(activity: Activity) {
         val offerId = offer.details.offerId ?: text(activity, R.string.detail_no_offer_id)
         append(text(activity, R.string.detail_offer_id, offerId))
         append(text(activity, R.string.detail_base_plan, offer.details.basePlanId))
+        if (offer.currencyCode.isNotEmpty()) {
+            append(text(activity, R.string.detail_currency, offer.currencyCode))
+        }
         if (offer.details.offerTags.isNotEmpty()) {
             append(text(activity, R.string.detail_tags, offer.details.offerTags.joinToString(", ")))
         }

@@ -23,6 +23,7 @@ internal data class OfferPhase(
     val billingPeriod: String,
     val billingCycles: Int,
     val recurrenceMode: Int = RECURRENCE_FINITE,
+    val currencyCode: String = "",
 ) {
     companion object {
         const val RECURRENCE_INFINITE = 1
@@ -39,6 +40,8 @@ internal object OfferPricing {
     private val subsequentCommitRegex = Regex("\"subsequentCommitmentPaymentsCount\"\\s*:\\s*(\\d+)")
 
     fun hasFreeIntro(phases: List<OfferPhase>): Boolean = phases.firstOrNull()?.amountMicros == 0L
+
+    fun detectCurrency(phases: List<OfferPhase>): String = phases.firstNotNullOfOrNull { it.currencyCode.trim().takeIf(String::isNotEmpty) }.orEmpty()
 
     fun classify(phases: List<OfferPhase>): OfferKind {
         if (phases.isEmpty()) return OfferKind.BASE_PLAN

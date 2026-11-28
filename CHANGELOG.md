@@ -2,6 +2,15 @@
 
 All notable changes to OnePeek are documented in this file.
 
+## [0.5.1-beta.1] - 2026-11-28
+
+Regional Play Store billing currency diagnostics informed by a full 251-region Google One server pricing audit (171 recognized markets across 63 billing currencies).
+
+### Added
+
+- Captures `PricingPhase.priceCurrencyCode` in `OfferPhase` and adds `OfferPricing.detectCurrency` with JUnit 4 coverage.
+- Displays the active Play Store billing currency (`USD`, `INR`, `EUR`, `GBP`, `TRY`, `BRL`, `JPY`, etc.) in the Offer List header, Offer Breakdown (`Currency: ...`), and exported `Copy Report` summary.
+
 ## [0.5.0-beta.1] - 2026-11-24
 
 Ultra-first inspection defaults, multi-phase pricing chain display, transition-plan SKU capture, and one-tap scan report export.
